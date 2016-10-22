@@ -1,88 +1,102 @@
 (function(){
 	angular.module('starter')
-	 .controller('HomeController', ['$scope', '$cordovaFile', '$cordovaFileTransfer', 'cordovaCamera', HomeController]);
+	.controller('HomeController', ['$scope', '$cordovaFile', '$cordovaFileTransfer', '$cordovaCamera', HomeController]);
 
-	 function HomeController($scope, $cordovaFile, $cordovaFileTransfer, $cordovaCamera) {
-	 	var me = this;
-	 	me.current_image = 'img/ionic.png';
-	 	me.text_content = '';
-	 	me.detection_type = 'TEXT_DETECTION';
+	function HomeController($scope, $cordovaFile, $cordovaFileTransfer, $cordovaCamera){
 
-	 	me.detection_types = {
-	 		LABEL_DETECTION: 'label',
-	 		TEXT_DETECTION: 'text',
-	 		LOGO_DETECTION: 'logo',
-	 		LANDMARK_DETECTION: 'landmark'
-	 	};
+		var me = this;
+		me.current_image = 'img/legaldoc1.jpg';
+		me.image_description = '';
+    	me.detection_type = 'TEXT_DETECTION';
 
-	 	var api_key = 'AIzaSyDADZ6HGkhovfcQn8SB9QAaznyPZL6JsE8';
+	    me.detection_types = {
+	      LABEL_DETECTION: 'label',
+	      TEXT_DETECTION: 'text',
+	      LOGO_DETECTION: 'logo',
+	      LANDMARK_DETECTION: 'landmark'
+	    };
 
-	 	$scope.takePicture = function(){
-	 		alert('detection_type: ' +me.detection_type);
+		var api_key = 'AIzaSyDADZ6HGkhovfcQn8SB9QAaznyPZL6JsE8';
 
-	 		var options = {
-	 			destinationType: Camera.DestinationType.DATA_URL,
-	 			sourceType: Camera.PictureSourceType.CAMERA,
-	 			targetWidth: 500,
-	 			targetHeight: 500,
-	 			correctOrientation: true,
-	 			cameraDirection: 0,
-	 			encodingType: Camera.encodingType.JPEG
-	 		};
 
-	 		$cordovaCamera.getPicture(options).then(function(imagedata){
-	 			me.current_image = "data:image/jpeg;base64," + imagedata;
-	 			me.text_content = '';
-	 			me.locale = '';
+		$scope.takePicture = function(){
+      		alert('detection type: ' + me.detection_type);
 
-	 			var vision_api_json = {
-	 				"requests": [
-	 					{
-	 						"image":{
-	 							"content":imagedata
-	 						},
-	 						"features": [
-		 						{
-		 							"type": me.detection_type,
-		 							"maxResults": 200
-		 						}
-	 						]
-	 					}
-	 				]
-	 			};
+			var options = {
+			  	destinationType: Camera.DestinationType.DATA_URL,
+	    		sourceType: Camera.PictureSourceType.CAMERA,
+		        targetWidth: 500,
+		        targetHeight: 500,
+		        correctOrientation: true,
+		        cameraDirection: 0,
+		        encodingType: Camera.EncodingType.JPEG
+			};
 
-	 			var file_contents = JSON.stringify(vision_api_json);
+			$cordovaCamera.getPicture(options).then(function(imagedata){
 
-	 			$cordovaFile.writeFile(
-	 				cordova.file.applicationStorageDirectory,
-	 				'file.json',
-	 				file_contents,
-	 				true
-	 			).then(function(result){
-	 				var headers = {
-	 					'Content-Type': 'application/json'
-	 				};
+				me.current_image = "data:image/jpeg;base64," + imagedata;
+		        me.image_description = '';
+		        me.locale = '';
 
-	 				options.headers = headers;
+				var vision_api_json = {
+				  "requests":[
+				    {
+				      "image":{
+				        "content": imagedata
+				      },
+				      "features":[
+				        {
+				          "type": me.detection_type,
+				          "maxResults": 1
+				        }
+				      ]
+				    }
+				  ]
+				};
 
-	 				var server = 'https://vision.googleapis.com/v1/images:annotate?key=' + api_key;
-	 				var filePath = cordova.file.applicationStorageDirectory + 'file.json';
+				var file_contents = JSON.stringify(vision_api_json);
 
-	 				$cordovaFileTransfer.upload(server, filePath, options, true)
-	 					.then(function(result){
-	 						var res = JSON.parse(result.response);
-	 						var key = me.detection_types[me.detection_type] + 'Annotations';
+				$cordovaFile.writeFile(
+					cordova.file.applicationStorageDirectory,
+					'file.json',
+					file_contents,
+					true
+				).then(function(result){
 
-	 						me.text_content = res.responses[0][key][0].description;
-	 					}, function(err){
-	 						alert('An error occurred while reading the image');
-	 					});
-	 			}, function(err){
-	 				alert('An error occurred while writing to the file');
-	 			});
-	 		}, function(err){
-	 			alert('An error occurred retrieving your picture');
-	 		})
-	 	}
-	 }
+					var headers = {
+						'Content-Type': 'application/json'
+					};
+
+					options.headers = headers;
+
+					var server = 'https://vision.googleapis.com/v1/images:annotate?key=' + api_key;
+					var filePath = cordova.file.applicationStorageDirectory + 'file.json';
+
+					$cordovaFileTransfer.upload(server, filePath, options, true)
+				  		.then(function(result){
+
+			                var res = JSON.parse(result.response);
+			                var key = me.detection_types[me.detection_type] + 'Annotations';
+
+				    		me.image_description = res.responses[0][key][0].description;
+				    		var result = me.image_description.split(" ");
+				    		
+
+					  }, function(err){
+					    alert('An error occured while uploading the file');
+					  });
+
+				}, function(err){
+        			alert('An error occured while writing to the file');
+        		});
+
+				}, function(err){
+			  		alert('An error occured getting the picture from the camera');
+				});
+
+
+		}
+
+	}
+
 })();
